@@ -33,6 +33,8 @@ dreamForm.addEventListener('submit', async (e) => {
             body: JSON.stringify({ dream_text: dream }),
         });
 
+        // Read the body before checking the status so the server's error message can be shown
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
             showErrorMessage(data.error || 'Failed to process your dream. Please try again.');

@@ -29,7 +29,8 @@ export async function getDreamInterpretation(dreamText) {
     });
     return message.choices[0].message.content.trim();
   } catch (error) {
-    console.error('OpenAI API error:', error);
+    // Log only safe fields: the full error object (incl. `cause`) can contain request headers with the API key
+    console.error('OpenAI API error:', error.name, error.status ?? '', error.message);
     throw new Error(`API error: ${error.message}`);
   }
 }

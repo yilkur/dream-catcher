@@ -23,7 +23,6 @@ app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
 
 // health endpoint
-
 app.get('/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -40,16 +39,49 @@ app.get('/health', async (req, res) => {
       uptime: process.uptime()
     })
   }
-})
+});
+
+// shutdown endpoint: delete after testing
+app.get('/shutdown', (req, res) => {
+  console.log('=== MANUAL SHUTDOWN TRIGGERED ===');
+  res.send('Shutting down...');
+  setTimeout(() => {
+    process.kill(process.pid, 'SIGTERM');
+  }, 100);
+});
 
 // API Routes
 app.use('/api/dreams', dreamsRouter);
 
+process.on('SIGINT', () => {
+  console.log('Starting graceful shutdown');
+});
+
 // Initialize database then start server
+let server;
+
 initDatabase().then(() => {
-  app.listen(PORT, () => {
+  server = app.listen(PORT, () => { 
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }).catch(error => {
   console.error('Failed to initialize database:', error);
+  process.exit(1)
 });
+
+process.on('SIGTERM', gracefulShutdown);
+
+async function gracefulShutdown() {
+ console.log('SIGTERM received, shutting down gracefully');
+ server.close(() => {
+   console.log('HTTP server closed');
+ });
+ try {
+   await pool.end();
+   console.log('Database pool closed');
+   process.exit(0)
+ } catch (error) {
+   console.error('Error closing database pool:', error);
+   process.exit(1)
+ }
+}
